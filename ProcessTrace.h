@@ -120,6 +120,8 @@ private:
   std::string file_name;
   std::fstream trace;
   long line_number;
+  int quota;
+  int numPagesAllocated;
 
   // Memory contents
   mem::MMU &memory;
