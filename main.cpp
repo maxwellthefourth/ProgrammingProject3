@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
   std::cout << timeSlice << std::endl;
   
   std::vector<std::string> fileNames;
-  for (int i = 2; i < argc; i++)
+  for (int i = 1; i < argc; i++)
       fileNames.push_back(argv[i]);
   
   mem::MMU memory(1024); // create an instance of the MMU class with 1024 (0x400) page frames
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
       tempProcess = new ProcessTrace(memory, allocator, fileNames.at(i));
       processes.push_back(tempProcess);
   }
-  
+
   for (int i = 0; i < processes.size(); i++) {
       tempProcess = processes.at(i);
       tempProcess->Execute();

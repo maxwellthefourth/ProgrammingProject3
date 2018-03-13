@@ -26,8 +26,10 @@
         <runcommandpicklist>
           <runcommandpicklistitem>"${OUTPUT_PATH}"</runcommandpicklistitem>
           <runcommandpicklistitem>"${OUTPUT_PATH}" trace1v.txt</runcommandpicklistitem>
+          <runcommandpicklistitem>"${OUTPUT_PATH}" trace1v.txt trace2v_multi-page.txt</runcommandpicklistitem>
+          <runcommandpicklistitem>"${OUTPUT_PATH}" trace2v_multi-page.txt</runcommandpicklistitem>
         </runcommandpicklist>
-        <runcommand>"${OUTPUT_PATH}" trace1v.txt</runcommand>
+        <runcommand>"${OUTPUT_PATH}" trace2v_multi-page.txt</runcommand>
         <rundir></rundir>
         <buildfirst>true</buildfirst>
         <terminal-type>0</terminal-type>
