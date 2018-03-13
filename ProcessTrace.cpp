@@ -174,38 +174,35 @@ void ProcessTrace::CmdPut(const string &line,
   uint32_t addr = cmdArgs.at(0);
   size_t num_bytes = cmdArgs.size() - 1;
   uint8_t buffer[num_bytes];
-  for (int i = 0; i < num_bytes+1; i++) {
-      buffer[i] = cmdArgs.at(i+1); // skip the first cmdArg
+  int size = cmdArgs.size()-1;
+  for (int i = 0; i < size; i++) {
+    buffer[i] = cmdArgs.at(i+1); // skip the first cmdArg
   }
   
-  while (true) {
-    int numBytesToAllocate = num_bytes;
     try {
         memory.set_PMCB(vmem_pmcb);
         memory.put_bytes(addr, num_bytes, buffer);
-        break; // done
+        // done
     } catch (PageFaultException e) {
         memory.set_PMCB(vmem_pmcb);
         memory.get_PMCB(vmem_pmcb);
-        numBytesToAllocate -= vmem_pmcb.next_vaddress-addr; // Any destination page which is not Present (causing a page fault) should be allocated, and the put operation should be resumed.
         if (numPagesAllocated != quota) { // loops through catch statement until either quota limit is reached or no more bytes need to be allocated
-            if (numBytesToAllocate != 0) { // still has bytes that need to be allocated
-                  memory.set_PMCB(pmem_pmcb);
-                  AllocateAndMapPage(vmem_pmcb.next_vaddress & kPageNumberMask);
-                  memory.set_PMCB(vmem_pmcb);
-                  numPagesAllocated++;
+            memory.set_PMCB(pmem_pmcb);
+            for (int i = 0; i < vmem_pmcb.remaining_count; i++) {
+                AllocateAndMapPage(addr);
+                addr += 0x1000;
+                numPagesAllocated++;
             }
+            memory.set_PMCB(vmem_pmcb);
         }
         else { // Any destination page which is not Present (causing a page fault) should be allocated, and the put operation should be resumed.
             cout << "Process Page Quota is exceeded." << std::endl;
-            break;
         }
     //    PrintAndClearException("PageFaultException", e);
     } catch (WritePermissionFaultException e) {
         PrintAndClearException("WritePermissionFaultException", e);
-        break;
+        
     }
-  }
 }
 
 void ProcessTrace::CmdCopy(const string &line,
@@ -229,34 +226,31 @@ void ProcessTrace::CmdCopy(const string &line,
   }
   
   // Try writing bytes
-  while (true) {
-    int numBytesToAllocate = num_bytes;
     try {
-        memory.set_PMCB(vmem_pmcb);
-        memory.put_bytes(dst, bytes_read, buffer);
-        break; // done
-    } catch(PageFaultException e) {
+        if (bytes_read != 0) {
+            memory.set_PMCB(vmem_pmcb);
+            memory.put_bytes(dst, bytes_read, buffer);
+        }
+        // done
+    } catch (PageFaultException e) {
         memory.set_PMCB(vmem_pmcb);
         memory.get_PMCB(vmem_pmcb);
-        numBytesToAllocate -= vmem_pmcb.next_vaddress-dst; // Any destination page which is not Present (causing a page fault) should be allocated, and the copy operation should be resumed.
         if (numPagesAllocated != quota) {
-            if (numBytesToAllocate != 0) { // still has bytes that need to be copied
-                memory.set_PMCB(pmem_pmcb);
-                AllocateAndMapPage(vmem_pmcb.next_vaddress & kPageNumberMask);
-                memory.set_PMCB(vmem_pmcb);
+            memory.set_PMCB(pmem_pmcb);
+            for (int i = 0; i < vmem_pmcb.remaining_count; i++) {
+                AllocateAndMapPage(dst);
+                dst += 0x1000;
                 numPagesAllocated++;
             }
+            memory.set_PMCB(vmem_pmcb);
         }
         else { // Any destination page which is not Present (causing a page fault) should be allocated, and the copy operation should be resumed.
             cout << "Process Page Quota is exceeded." << std::endl;
-            break;
         }
         //PrintAndClearException("PageFaultException on write", e);
-    } catch(WritePermissionFaultException e) {
+    } catch (WritePermissionFaultException e) {
         PrintAndClearException("WritePermissionFaultException", e);
-        break;
     }
-  }
 }
 
 void ProcessTrace::CmdFill(const string &line,
@@ -266,18 +260,37 @@ void ProcessTrace::CmdFill(const string &line,
   Addr addr = cmdArgs.at(0);
   Addr num_bytes = cmdArgs.at(1);
   uint8_t val = cmdArgs.at(2);
-  try {
-    for(int i = 0; i < num_bytes; ++i) {
-      memory.put_byte(addr++, &val);
+  
+    try {
+        memory.set_PMCB(vmem_pmcb);
+        //memory.put_bytes(addr, &val, numBytesToAllocate);
+        for (int i = 0; i < num_bytes; i++) {
+            memory.put_byte(addr, &val);
+            addr++;
+        }
+        // done
+    } catch (PageFaultException e) {
+        memory.set_PMCB(vmem_pmcb);
+        memory.get_PMCB(vmem_pmcb);
+        if (numPagesAllocated != quota) {
+            memory.set_PMCB(pmem_pmcb);
+            for (int i = 0; i < vmem_pmcb.remaining_count; i++) {
+                AllocateAndMapPage(addr);
+                addr += 0x1000;
+                numPagesAllocated++;
+            }
+            memory.set_PMCB(vmem_pmcb);
+        }
+        else {
+            cout << "Process Page Quota is exceeded." << std::endl;
+        }
+      //PrintAndClearException("PageFaultException", e);
+    } catch (WritePermissionFaultException e) {
+      PrintAndClearException("WritePermissionFaultException", e);
     }
-  } catch(PageFaultException e) {
-    PrintAndClearException("PageFaultException", e);
-  } catch(WritePermissionFaultException e) {
-    PrintAndClearException("WritePermissionFaultException", e);
-  }
 }
 
-void ProcessTrace::CmdDump(const string &line,
+void ProcessTrace::CmdDump(const string &line, // Dump method does not need any changes from project2
                            const string &cmd,
                            const vector<uint32_t> &cmdArgs) {
   uint32_t addr = cmdArgs.at(0);
